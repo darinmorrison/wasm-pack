@@ -27,6 +27,7 @@ pub struct Build {
     pub crate_data: manifest::CrateData,
     pub scope: Option<String>,
     pub disable_dts: bool,
+    pub preloads: bool,
     pub target: Target,
     pub profile: BuildProfile,
     pub mode: InstallMode,
@@ -44,10 +45,6 @@ pub enum Target {
     /// Default output mode or `--target bundler`, indicates output will be
     /// used with a bundle in a later step.
     Bundler,
-    /// Correspond to `--target electron-rerender` where the output is similar
-    /// to `--target web` except that node module imports are split into a
-    /// separate `preload.js` file.
-    ElectronRenderer,
     /// Correspond to `--target web` where the output is natively usable as an
     /// ES module in a browser and the wasm is manually instantiated.
     Web,
@@ -70,7 +67,6 @@ impl fmt::Display for Target {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match self {
             Target::Bundler => "bundler",
-            Target::ElectronRenderer => "electron-renderer",
             Target::Web => "web",
             Target::Nodejs => "nodejs",
             Target::NoModules => "no-modules",
@@ -87,7 +83,6 @@ impl FromStr for Target {
             "web" => Ok(Target::Web),
             "nodejs" => Ok(Target::Nodejs),
             "no-modules" => Ok(Target::NoModules),
-            "electron-renderer" => Ok(Target::ElectronRenderer),
             _ => bail!("Unknown target: {}", s),
         }
     }
@@ -124,6 +119,10 @@ pub struct BuildOptions {
     /// By default a *.d.ts file is generated for the generated JS file, but
     /// this flag will disable generating this TypeScript file.
     pub disable_dts: bool,
+
+    #[structopt(long = "preloads")]
+    /// Output an Electron preloads file
+    pub preloads: bool,
 
     #[structopt(long = "target", short = "t", default_value = "bundler")]
     /// Sets the target environment. [possible values: bundler, nodejs, web, no-modules]
@@ -166,6 +165,7 @@ impl Default for BuildOptions {
             scope: None,
             mode: InstallMode::default(),
             disable_dts: false,
+            preloads: false,
             target: Target::default(),
             debug: false,
             dev: false,
@@ -202,6 +202,7 @@ impl Build {
             crate_data,
             scope: build_opts.scope,
             disable_dts: build_opts.disable_dts,
+            preloads: build_opts.preloads,
             target: build_opts.target,
             profile,
             mode: build_opts.mode,
@@ -376,6 +377,7 @@ impl Build {
             &self.out_dir,
             &self.out_name,
             self.disable_dts,
+            self.preloads,
             self.target,
             self.profile,
         )?;
